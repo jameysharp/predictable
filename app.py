@@ -1,4 +1,5 @@
 import calendar
+from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from flask import Flask
 from flask import abort
@@ -8,6 +9,7 @@ from flask import render_template
 from flask import request
 from flask import url_for
 import itertools
+from werkzeug.routing import BaseConverter
 
 app = Flask(__name__)
 
@@ -41,37 +43,54 @@ def count_dates(start, now, include_day):
     partial = len(list(itertools.takewhile(lambda x: x < now, generate_dates(start, include_day, forward=True))))
     return weeks * per_week + partial
 
+Config = namedtuple('Config', ['start_timestamp', 'include_day'])
+
+class ConfigConverter(BaseConverter):
+    regex = r'[0-9A-Fa-f]+'
+
+    def to_python(self, value):
+        config = int(value, 16)
+        start_spec, days_spec = divmod(config, 127)
+        days_spec += 1
+        include_day = [ bool(days_spec & (1 << i)) for i in range(7) ]
+        return Config(start_timestamp=start_spec, include_day=include_day)
+
+    def to_url(self, value):
+        config = value.start_timestamp * 127
+        config += sum(included << day for day, included in enumerate(value.include_day)) - 1
+        return "{:x}".format(config)
+
+app.url_map.converters['config'] = ConfigConverter
+
 @app.route("/")
 def edit_feed():
     if 'go' in request.args:
         template = request.args['template']
-        days = [ "day{}".format(i) in request.args for i in range(7) ]
         start_date = request.args['start_date']
         update_time = request.args['update_time']
-        start_timestamp = int(datetime.strptime(start_date + ' ' + update_time, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp())
-        config = (start_timestamp * 127) + sum(included << day for day, included in enumerate(days)) - 1
-        if sum(days):
+        start = datetime.strptime(start_date + ' ' + update_time, "%Y-%m-%d %H:%M:%S")
+        config = Config(
+            start_timestamp=int(start.replace(tzinfo=timezone.utc).timestamp()),
+            include_day=[ "day{}".format(i) in request.args for i in range(7) ],
+        )
+        if sum(config.include_day):
             return redirect(url_for('feed', config=config, template=template))
     return render_template("edit.html", day_names=calendar.day_name)
 
-@app.route("/f/<int:config>/<path:template>")
-@app.route("/<int:page>/<int:config>/<path:template>")
+@app.route("/f/<config:config>/<path:template>")
+@app.route("/<int:page>/<config:config>/<path:template>")
 def feed(config, template, page=None):
-    start_spec, days_spec = divmod(config, 127)
-    days_spec += 1
-    include_day = [ bool(days_spec & (1 << i)) for i in range(7) ]
-    start = datetime.fromtimestamp(start_spec, timezone.utc)
-
+    start = datetime.fromtimestamp(config.start_timestamp, timezone.utc)
     now = datetime.now(start.tzinfo)
     per_page = 50
-    last_page = count_dates(start, now, include_day) // per_page - 1
+    last_page = count_dates(start, now, config.include_day) // per_page - 1
 
     links = []
     if page is None:
-        dates = recent_dates(start, now, include_day, per_page)
+        dates = recent_dates(start, now, config.include_day, per_page)
         prev_page = last_page
     elif page <= last_page:
-        dates = archived_dates(start, include_day, page * per_page, per_page)
+        dates = archived_dates(start, config.include_day, page * per_page, per_page)
         links.append(('current', url_for('feed', config=config, template=template)))
         prev_page = page - 1
         if page < last_page:
@@ -82,7 +101,7 @@ def feed(config, template, page=None):
     if prev_page >= 0:
         links.append(('prev-archive', url_for('feed', config=config, template=template, page=prev_page)))
 
-    day_names = [calendar.day_name[day] for day, included in enumerate(include_day) if included]
+    day_names = [calendar.day_name[day] for day, included in enumerate(config.include_day) if included]
     days_description = ' and '.join(filter(None, (', '.join(day_names[:-1]), day_names[-1])))
 
     response = make_response(render_template("feed.xml",
