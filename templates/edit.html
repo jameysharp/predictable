@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Full-history feed generator</title>
+  </head>
+  <body>
+    <h1>Full-history feed generator</h1>
+
+    <form action="{{ url_for('edit_feed') }}" method="GET">
+      <p>
+      <label for="template">Template:</label>
+      <input type="text" name="template" required placeholder="http://example.com/%Y/%m/%d" value="{{ request.args['template'] }}" />
+      </p>
+      <p>
+      <label for="start_date">Start date:</label>
+      <input type="date" name="start_date" required value="{{ request.args['start_date'] }}" />
+      </p>
+      <p>Update on:</p>
+      <ul>
+        {%- for day in day_names %}
+        {%- set name="day" ~ loop.index0 %}
+        <li>
+          <input type="checkbox" name="{{ name }}"{% if name in request.args %} checked{% endif %} />
+          <label for="{{ name }}">{{ day }}</label>
+        </li>
+        {%- endfor %}
+      </ul>
+      <p>
+      <label for="update_time">Update time:</label>
+      <input type="time" name="update_time" step="1" required value="{{ request.args['update_time'] }}" />
+      </p>
+      <p><input type="submit" name="go" value="Generate" /></p>
+    </form>
+  </body>
+</html>
