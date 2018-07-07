@@ -34,7 +34,10 @@ def archived_dates(start, include_day, skip, count):
     per_week = sum(include_day)
     skip_weeks, skip = divmod(skip, per_week)
     start += timedelta(weeks=skip_weeks)
-    return itertools.islice(generate_dates(start, include_day, forward=True), skip, skip + count)
+    return itertools.islice(
+        generate_dates(start, include_day, forward=True),
+        skip, skip + count
+    )
 
 
 def recent_dates(start, now, include_day, count):
@@ -42,14 +45,27 @@ def recent_dates(start, now, include_day, count):
     current = datetime.combine(now, start.timetz())
     if current > now:
         current -= day
-    return itertools.takewhile(lambda x: x >= start, itertools.islice(generate_dates(current, include_day, forward=False), 0, count))
+    return itertools.takewhile(
+        lambda x: x >= start,
+        itertools.islice(
+            generate_dates(current, include_day, forward=False),
+            0, count
+        )
+    )
 
 
 def count_dates(start, now, include_day):
     per_week = sum(include_day)
     weeks = (start - now).days // 7
     start += timedelta(weeks=weeks)
-    partial = len(list(itertools.takewhile(lambda x: x < now, generate_dates(start, include_day, forward=True))))
+    partial = len(
+        list(
+            itertools.takewhile(
+                lambda x: x < now,
+                generate_dates(start, include_day, forward=True)
+            )
+        )
+    )
     return weeks * per_week + partial
 
 
@@ -67,8 +83,12 @@ class ConfigConverter(BaseConverter):
         return Config(start_timestamp=start_spec, include_day=include_day)
 
     def to_url(self, value):
-        config = value.start_timestamp * 127
-        config += sum(included << day for day, included in enumerate(value.include_day)) - 1
+        days_spec = sum(
+            1 << day
+            for day, included in enumerate(value.include_day)
+            if included
+        )
+        config = value.start_timestamp * 127 + days_spec - 1
         return "{:x}".format(config)
 
 
@@ -93,13 +113,17 @@ def edit_feed():
         start_date = request.args['start_date']
         tz = pytz.timezone(request.args['tzname'])
         update_time = request.args['update_time']
-        start = datetime.strptime(start_date + ' ' + update_time, "%Y-%m-%d %H:%M:%S")
+        start = datetime.strptime(
+            start_date + ' ' + update_time,
+            "%Y-%m-%d %H:%M:%S",
+        )
         config = Config(
             start_timestamp=int(tz.localize(start).timestamp()),
             include_day=["day{}".format(i) in request.args for i in range(7)],
         )
-        if sum(config.include_day):
-            return redirect(url_for('feed', tz=tz, config=config, template=template))
+        if any(config.include_day):
+            feed_url = url_for('feed', tz=tz, config=config, template=template)
+            return redirect(feed_url)
 
     return render_template(
         "edit.html",
@@ -111,18 +135,19 @@ def edit_feed():
 @app.route("/f/<tz:tz>/<config:config>/<path:template>")
 @app.route("/<int:page>/<tz:tz>/<config:config>/<path:template>")
 def feed(config, tz, template, page=None):
+    include_day = config.include_day
     start = datetime.fromtimestamp(config.start_timestamp, tz)
     now = datetime.now(start.tzinfo)
     per_page = 50
-    last_page = count_dates(start, now, config.include_day) // per_page - 1
+    last_page = count_dates(start, now, include_day) // per_page - 1
 
     links = []
     if page is None:
-        dates = recent_dates(start, now, config.include_day, per_page)
+        dates = recent_dates(start, now, include_day, per_page)
         if last_page >= 0:
             links.append(('prev-archive', last_page))
     elif page <= last_page:
-        dates = archived_dates(start, config.include_day, page * per_page, per_page)
+        dates = archived_dates(start, include_day, page * per_page, per_page)
         links.append(('current', None))
         if page < last_page:
             links.append(('next-archive', page + 1))
@@ -131,8 +156,18 @@ def feed(config, tz, template, page=None):
     else:
         abort(404)
 
-    day_names = [calendar.day_name[day] for day, included in enumerate(config.include_day) if included]
-    days_description = ' and '.join(filter(None, (', '.join(day_names[:-1]), day_names[-1])))
+    day_names = [
+        calendar.day_name[day]
+        for day, included in enumerate(include_day)
+        if included
+    ]
+    if len(day_names) > 1:
+        days_description = '{} and {}'.format(
+            ', '.join(day_names[:-1]),
+            day_names[-1],
+        )
+    else:
+        days_description = day_names[0]
 
     edit_link = url_for(
         'edit_feed',
@@ -141,7 +176,11 @@ def feed(config, tz, template, page=None):
         tzname=tz.zone,
         start_date=start.strftime('%Y-%m-%d'),
         update_time=start.strftime('%H:%M:%S'),
-        **{"day{}".format(day): "on" for day, included in enumerate(config.include_day) if included}
+        **{
+            "day{}".format(day): "on"
+            for day, included in enumerate(include_day)
+            if included
+        }
     )
 
     feed = render_template(
