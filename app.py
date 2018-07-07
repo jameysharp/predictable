@@ -56,7 +56,7 @@ def recent_dates(start, now, include_day, count):
 
 def count_dates(start, now, include_day):
     per_week = sum(include_day)
-    weeks = (start - now).days // 7
+    weeks = (now - start).days // 7
     start += timedelta(weeks=weeks)
     partial = len(
         list(
