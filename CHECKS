@@ -1,0 +1,4 @@
+WAIT=1
+ATTEMPTS=5
+
+/	https://github.com/jameysharp/predictable
