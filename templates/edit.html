@@ -36,5 +36,13 @@
       </p>
       <p><input type="submit" name="go" value="Generate" /></p>
     </form>
+
+    <p><small>
+    {{ request.host }} is running
+    <a href="https://github.com/jameysharp/predictable" target="_blank" rel="noopener">Predictable</a>
+    {%- if git_rev %}
+    version {{ git_rev }}
+    {%- endif %}.
+    </small></p>
   </body>
 </html>

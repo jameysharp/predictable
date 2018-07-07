@@ -9,6 +9,7 @@ from flask import render_template
 from flask import request
 from flask import url_for
 import itertools
+import os
 import pytz
 from werkzeug.routing import BaseConverter
 
@@ -89,7 +90,11 @@ def edit_feed():
         )
         if sum(config.include_day):
             return redirect(url_for('feed', tz=tz, config=config, template=template))
-    return render_template("edit.html", day_names=calendar.day_name)
+
+    return render_template("edit.html",
+        day_names=calendar.day_name,
+        git_rev=os.getenv("GIT_REV"),
+    )
 
 @app.route("/f/<tz:tz>/<config:config>/<path:template>")
 @app.route("/<int:page>/<tz:tz>/<config:config>/<path:template>")
