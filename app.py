@@ -1,6 +1,6 @@
 import calendar
 from collections import namedtuple
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from flask import Flask
 from flask import abort
 from flask import make_response
@@ -15,6 +15,7 @@ from werkzeug.routing import BaseConverter
 
 app = Flask(__name__)
 
+
 def generate_dates(start, include_day, forward):
     if forward:
         jump = timedelta(days=1)
@@ -28,11 +29,13 @@ def generate_dates(start, include_day, forward):
             yield tz.localize(datetime.combine(current_date, update_time))
         current_date += jump
 
+
 def archived_dates(start, include_day, skip, count):
     per_week = sum(include_day)
     skip_weeks, skip = divmod(skip, per_week)
     start += timedelta(weeks=skip_weeks)
     return itertools.islice(generate_dates(start, include_day, forward=True), skip, skip + count)
+
 
 def recent_dates(start, now, include_day, count):
     day = timedelta(days=1)
@@ -41,6 +44,7 @@ def recent_dates(start, now, include_day, count):
         current -= day
     return itertools.takewhile(lambda x: x >= start, itertools.islice(generate_dates(current, include_day, forward=False), 0, count))
 
+
 def count_dates(start, now, include_day):
     per_week = sum(include_day)
     weeks = (start - now).days // 7
@@ -48,7 +52,9 @@ def count_dates(start, now, include_day):
     partial = len(list(itertools.takewhile(lambda x: x < now, generate_dates(start, include_day, forward=True))))
     return weeks * per_week + partial
 
+
 Config = namedtuple('Config', ['start_timestamp', 'include_day'])
+
 
 class ConfigConverter(BaseConverter):
     regex = r'[0-9A-Fa-f]+'
@@ -57,7 +63,7 @@ class ConfigConverter(BaseConverter):
         config = int(value, 16)
         start_spec, days_spec = divmod(config, 127)
         days_spec += 1
-        include_day = [ bool(days_spec & (1 << i)) for i in range(7) ]
+        include_day = [bool(days_spec & (1 << i)) for i in range(7)]
         return Config(start_timestamp=start_spec, include_day=include_day)
 
     def to_url(self, value):
@@ -65,7 +71,9 @@ class ConfigConverter(BaseConverter):
         config += sum(included << day for day, included in enumerate(value.include_day)) - 1
         return "{:x}".format(config)
 
+
 app.url_map.converters['config'] = ConfigConverter
+
 
 class TimezoneConverter(BaseConverter):
     def to_python(self, value):
@@ -74,7 +82,9 @@ class TimezoneConverter(BaseConverter):
     def to_url(self, value):
         return value.zone.replace('/', '+')
 
+
 app.url_map.converters['tz'] = TimezoneConverter
+
 
 @app.route("/")
 def edit_feed():
@@ -86,15 +96,17 @@ def edit_feed():
         start = datetime.strptime(start_date + ' ' + update_time, "%Y-%m-%d %H:%M:%S")
         config = Config(
             start_timestamp=int(tz.localize(start).timestamp()),
-            include_day=[ "day{}".format(i) in request.args for i in range(7) ],
+            include_day=["day{}".format(i) in request.args for i in range(7)],
         )
         if sum(config.include_day):
             return redirect(url_for('feed', tz=tz, config=config, template=template))
 
-    return render_template("edit.html",
+    return render_template(
+        "edit.html",
         day_names=calendar.day_name,
         git_rev=os.getenv("GIT_REV"),
     )
+
 
 @app.route("/f/<tz:tz>/<config:config>/<path:template>")
 @app.route("/<int:page>/<tz:tz>/<config:config>/<path:template>")
@@ -123,22 +135,25 @@ def feed(config, tz, template, page=None):
     day_names = [calendar.day_name[day] for day, included in enumerate(config.include_day) if included]
     days_description = ' and '.join(filter(None, (', '.join(day_names[:-1]), day_names[-1])))
 
-    edit_link = url_for('edit_feed',
+    edit_link = url_for(
+        'edit_feed',
         _external=True,
         template=template,
         tzname=tz.zone,
         start_date=start.strftime('%Y-%m-%d'),
         update_time=start.strftime('%H:%M:%S'),
-        **{ "day{}".format(day): "on" for day, included in enumerate(config.include_day) if included }
+        **{"day{}".format(day): "on" for day, included in enumerate(config.include_day) if included}
     )
 
-    response = make_response(render_template("feed.xml",
+    feed = render_template(
+        "feed.xml",
         template=template,
         days_description=days_description,
         start=start,
         edit_link=edit_link,
         links=links,
         dates=dates,
-    ))
+    )
+    response = make_response(feed)
     response.headers['Content-Type'] = 'application/rss+xml'
     return response
