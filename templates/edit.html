@@ -26,6 +26,11 @@
         {%- endfor %}
       </ul>
       <p>
+      <label for="tzname">Update timezone:</label>
+      <input type="text" name="tzname" required value="{{ request.args['tzname'] }}" />
+      (Look up the IANA time zone identifier for a place at <a href="https://time.is/" target="_blank" rel="noopener">time.is</a>)
+      </p>
+      <p>
       <label for="update_time">Update time:</label>
       <input type="time" name="update_time" step="1" required value="{{ request.args['update_time'] }}" />
       </p>

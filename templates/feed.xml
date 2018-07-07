@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>
 <title>{{ template }}</title>
-<description>Updating every {{ days_description }} at {{ start.strftime("%T %z since %F") }}</description>
+<description>Updating every {{ days_description }} since {{ start.strftime("%F at %T") }} in the {{ start.tzinfo.zone }} time zone</description>
 <link>{{ edit_link }}</link>
 {% for rel, href in links -%}
 {% if rel == "current" -%}

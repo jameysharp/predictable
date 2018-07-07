@@ -9,6 +9,7 @@ from flask import render_template
 from flask import request
 from flask import url_for
 import itertools
+import pytz
 from werkzeug.routing import BaseConverter
 
 app = Flask(__name__)
@@ -18,10 +19,13 @@ def generate_dates(start, include_day, forward):
         jump = timedelta(days=1)
     else:
         jump = timedelta(days=-1)
+    current_date = start.date()
+    update_time = start.time()
+    tz = start.tzinfo
     while True:
-        if include_day[start.weekday()]:
-            yield start
-        start += jump
+        if include_day[current_date.weekday()]:
+            yield tz.localize(datetime.combine(current_date, update_time))
+        current_date += jump
 
 def archived_dates(start, include_day, skip, count):
     per_week = sum(include_day)
@@ -62,25 +66,35 @@ class ConfigConverter(BaseConverter):
 
 app.url_map.converters['config'] = ConfigConverter
 
+class TimezoneConverter(BaseConverter):
+    def to_python(self, value):
+        return pytz.timezone(value.replace('+', '/'))
+
+    def to_url(self, value):
+        return value.zone.replace('/', '+')
+
+app.url_map.converters['tz'] = TimezoneConverter
+
 @app.route("/")
 def edit_feed():
     if 'go' in request.args:
         template = request.args['template']
         start_date = request.args['start_date']
+        tz = pytz.timezone(request.args['tzname'])
         update_time = request.args['update_time']
         start = datetime.strptime(start_date + ' ' + update_time, "%Y-%m-%d %H:%M:%S")
         config = Config(
-            start_timestamp=int(start.replace(tzinfo=timezone.utc).timestamp()),
+            start_timestamp=int(tz.localize(start).timestamp()),
             include_day=[ "day{}".format(i) in request.args for i in range(7) ],
         )
         if sum(config.include_day):
-            return redirect(url_for('feed', config=config, template=template))
+            return redirect(url_for('feed', tz=tz, config=config, template=template))
     return render_template("edit.html", day_names=calendar.day_name)
 
-@app.route("/f/<config:config>/<path:template>")
-@app.route("/<int:page>/<config:config>/<path:template>")
-def feed(config, template, page=None):
-    start = datetime.fromtimestamp(config.start_timestamp, timezone.utc)
+@app.route("/f/<tz:tz>/<config:config>/<path:template>")
+@app.route("/<int:page>/<tz:tz>/<config:config>/<path:template>")
+def feed(config, tz, template, page=None):
+    start = datetime.fromtimestamp(config.start_timestamp, tz)
     now = datetime.now(start.tzinfo)
     per_page = 50
     last_page = count_dates(start, now, config.include_day) // per_page - 1
@@ -91,15 +105,15 @@ def feed(config, template, page=None):
         prev_page = last_page
     elif page <= last_page:
         dates = archived_dates(start, config.include_day, page * per_page, per_page)
-        links.append(('current', url_for('feed', _external=True, config=config, template=template)))
+        links.append(('current', url_for('feed', _external=True, tz=tz, config=config, template=template)))
         prev_page = page - 1
         if page < last_page:
-            links.append(('next-archive', url_for('feed', _external=True, config=config, template=template, page=page + 1)))
+            links.append(('next-archive', url_for('feed', _external=True, tz=tz, config=config, template=template, page=page + 1)))
     else:
         abort(404)
 
     if prev_page >= 0:
-        links.append(('prev-archive', url_for('feed', _external=True, config=config, template=template, page=prev_page)))
+        links.append(('prev-archive', url_for('feed', _external=True, tz=tz, config=config, template=template, page=prev_page)))
 
     day_names = [calendar.day_name[day] for day, included in enumerate(config.include_day) if included]
     days_description = ' and '.join(filter(None, (', '.join(day_names[:-1]), day_names[-1])))
@@ -107,6 +121,7 @@ def feed(config, template, page=None):
     edit_link = url_for('edit_feed',
         _external=True,
         template=template,
+        tzname=tz.zone,
         start_date=start.strftime('%Y-%m-%d'),
         update_time=start.strftime('%H:%M:%S'),
         **{ "day{}".format(day): "on" for day, included in enumerate(config.include_day) if included }
