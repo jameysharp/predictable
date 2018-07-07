@@ -119,18 +119,17 @@ def feed(config, tz, template, page=None):
     links = []
     if page is None:
         dates = recent_dates(start, now, config.include_day, per_page)
-        prev_page = last_page
+        if last_page >= 0:
+            links.append(('prev-archive', last_page))
     elif page <= last_page:
         dates = archived_dates(start, config.include_day, page * per_page, per_page)
-        links.append(('current', url_for('feed', _external=True, tz=tz, config=config, template=template)))
-        prev_page = page - 1
+        links.append(('current', None))
         if page < last_page:
-            links.append(('next-archive', url_for('feed', _external=True, tz=tz, config=config, template=template, page=page + 1)))
+            links.append(('next-archive', page + 1))
+        if page > 0:
+            links.append(('prev-archive', page - 1))
     else:
         abort(404)
-
-    if prev_page >= 0:
-        links.append(('prev-archive', url_for('feed', _external=True, tz=tz, config=config, template=template, page=prev_page)))
 
     day_names = [calendar.day_name[day] for day, included in enumerate(config.include_day) if included]
     days_description = ' and '.join(filter(None, (', '.join(day_names[:-1]), day_names[-1])))
@@ -151,6 +150,7 @@ def feed(config, tz, template, page=None):
         days_description=days_description,
         start=start,
         edit_link=edit_link,
+        config=config,
         links=links,
         dates=dates,
     )

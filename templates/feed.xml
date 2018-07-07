@@ -3,11 +3,14 @@
 <title>{{ template }}</title>
 <description>Updating every {{ days_description }} since {{ start.strftime("%F at %T") }} in the {{ start.tzinfo.zone }} time zone</description>
 <link>{{ edit_link }}</link>
-{% for rel, href in links -%}
+{% for rel, page in links -%}
 {% if rel == "current" -%}
   <fh:archive xmlns:fh="http://purl.org/syndication/history/1.0"/>
 {% endif -%}
-  <atom:link{{ {'rel': rel, 'href': href}|xmlattr }}/>
+  <atom:link{{ {
+    'rel': rel,
+    'href': url_for('feed', _external=True, tz=start.tzinfo, config=config, template=template, page=page),
+    }|xmlattr }}/>
 {% else -%}
   <fh:complete xmlns:fh="http://purl.org/syndication/history/1.0"/>
 {% endfor -%}
