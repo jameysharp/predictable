@@ -2,6 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>
 <title>{{ template }}</title>
 <description>Updating every {{ days_description }} at {{ start.strftime("%T %z since %F") }}</description>
+<link>{{ edit_link }}</link>
 {% for rel, href in links -%}
 {% if rel == "current" -%}
   <fh:archive xmlns:fh="http://purl.org/syndication/history/1.0"/>
@@ -10,10 +11,11 @@
 {% else -%}
   <fh:complete xmlns:fh="http://purl.org/syndication/history/1.0"/>
 {% endfor -%}
+<atom:link{{ {'rel': "self", 'type': "application/rss+xml", 'href': request.url}|xmlattr }}/>
 {% for date in dates -%}
 <item>
   <title>{{ date.strftime("%F (%A)") }}</title>
-  <pubDate>{{ date.strftime("%a, %d %b %y %T %z") }}</pubDate>
+  <pubDate>{{ date.strftime("%a, %d %b %Y %T %z") }}</pubDate>
   {% with url=date.strftime(template) -%}
   <link>{{ url }}</link>
   <guid isPermaLink="true">{{ url }}</guid>
