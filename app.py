@@ -34,7 +34,7 @@ def recent_dates(start, now, include_day, count):
     current = datetime.combine(now, start.timetz())
     if current > now:
         current -= day
-    return itertools.islice(generate_dates(current, include_day, forward=False), 0, count)
+    return itertools.takewhile(lambda x: x >= start, itertools.islice(generate_dates(current, include_day, forward=False), 0, count))
 
 def count_dates(start, now, include_day):
     per_week = sum(include_day)
