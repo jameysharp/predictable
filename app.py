@@ -11,7 +11,7 @@ from flask import url_for
 import itertools
 import os
 import pytz
-from werkzeug.routing import BaseConverter
+from werkzeug.routing import BaseConverter, ValidationError
 
 app = Flask(__name__)
 
@@ -97,7 +97,10 @@ app.url_map.converters['config'] = ConfigConverter
 
 class TimezoneConverter(BaseConverter):
     def to_python(self, value):
-        return pytz.timezone(value.replace('+', '/'))
+        try:
+            return pytz.timezone(value.replace('+', '/'))
+        except pytz.exceptions.UnknownTimeZoneError:
+            raise ValidationError()
 
     def to_url(self, value):
         return value.zone.replace('/', '+')
