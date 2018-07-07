@@ -2,38 +2,53 @@
 <html>
   <head>
     <title>Full-history feed generator</title>
+<style>
+dt, dd { display: inline; }
+dl div { margin-left: 2em; }
+input[type="text"] { display: block; width: 30em; max-width: 80%; }
+li { display: inline-block; margin-right: 1ex; }
+</style>
   </head>
   <body>
     <h1>Full-history feed generator</h1>
 
     <form action="{{ url_for('edit_feed') }}" method="GET">
       <p>
-      <label for="template">Template:</label>
+      <label>Template:
       <input type="text" name="template" required placeholder="http://example.com/%Y/%m/%d" value="{{ request.args['template'] }}" />
+      </label>
       </p>
+      <p>A link will be constructed for each post in the RSS feed by replacing the following placeholders in the above template:</p>
+      <dl>
+        <div><dt><code>%Y</code></dt><dd>Four-digit year</dd></div>
+        <div><dt><code>%y</code></dt><dd>Two-digit year</dd></div>
+        <div><dt><code>%m</code></dt><dd>Two-digit month</dd></div>
+        <div><dt><code>%d</code></dt><dd>Two-digit day</dd></div>
+        <div><dt><code>%%</code></dt><dd>A literal percent symbol</dd></div>
+      </dl>
       <p>
-      <label for="start_date">Start date:</label>
+      <label>Start date:
       <input type="date" name="start_date" required value="{{ request.args['start_date'] }}" />
+      </label>
       </p>
-      <p>Update on:</p>
+      <p>Updates on:</p>
       <ul>
         {%- for day in day_names %}
         {%- set name="day" ~ loop.index0 %}
-        <li>
-          <input type="checkbox" name="{{ name }}"{% if name in request.args %} checked{% endif %} />
-          <label for="{{ name }}">{{ day }}</label>
-        </li>
+        <li><label><input type="checkbox" name="{{ name }}"{% if name in request.args %} checked{% endif %} /> {{ day }}</label></li>
         {%- endfor %}
       </ul>
       <p>
-      <label for="tzname">Update timezone:</label>
-      <input type="text" name="tzname" required value="{{ request.args['tzname'] }}" />
-      (Look up the IANA time zone identifier for a place at <a href="https://time.is/" target="_blank" rel="noopener">time.is</a>)
+      <label>At this time:
+      <input type="time" name="update_time" step="1" required value="{{ request.args['update_time'] }}" />
+      </label>
       </p>
       <p>
-      <label for="update_time">Update time:</label>
-      <input type="time" name="update_time" step="1" required value="{{ request.args['update_time'] }}" />
+      <label>In this time zone:
+      <input type="text" name="tzname" required placeholder="America/Los_Angeles" value="{{ request.args['tzname'] }}" />
+      </label>
       </p>
+      <p>Look up the IANA time zone identifier for a place at <a href="https://time.is/" target="_blank" rel="noopener">time.is</a>.</p>
       <p><input type="submit" name="go" value="Generate" /></p>
     </form>
 
