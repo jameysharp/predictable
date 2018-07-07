@@ -3,7 +3,12 @@
 <title>{{ template }}</title>
 <description>Updating every {{ days_description }} at {{ start.strftime("%T %z since %F") }}</description>
 {% for rel, href in links -%}
+{% if rel == "current" -%}
+  <fh:archive xmlns:fh="http://purl.org/syndication/history/1.0"/>
+{% endif -%}
   <atom:link{{ {'rel': rel, 'href': href}|xmlattr }}/>
+{% else -%}
+  <fh:complete xmlns:fh="http://purl.org/syndication/history/1.0"/>
 {% endfor -%}
 {% for date in dates -%}
 <item>
