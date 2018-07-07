@@ -132,6 +132,24 @@ def edit_feed():
     )
 
 
+@app.route("/e/<tz:tz>/<config:config>/<path:template>")
+def edit_feed_shorturl(tz, config, template):
+    start = datetime.fromtimestamp(config.start_timestamp, tz)
+    edit_link = url_for(
+        'edit_feed',
+        template=template,
+        tzname=tz.zone,
+        start_date=start.strftime('%Y-%m-%d'),
+        update_time=start.strftime('%H:%M:%S'),
+        **{
+            "day{}".format(day): "on"
+            for day, included in enumerate(config.include_day)
+            if included
+        }
+    )
+    return redirect(edit_link, 301)
+
+
 @app.route("/f/<tz:tz>/<config:config>/<path:template>")
 @app.route("/<int:page>/<tz:tz>/<config:config>/<path:template>")
 def feed(config, tz, template, page=None):
@@ -169,26 +187,11 @@ def feed(config, tz, template, page=None):
     else:
         days_description = day_names[0]
 
-    edit_link = url_for(
-        'edit_feed',
-        _external=True,
-        template=template,
-        tzname=tz.zone,
-        start_date=start.strftime('%Y-%m-%d'),
-        update_time=start.strftime('%H:%M:%S'),
-        **{
-            "day{}".format(day): "on"
-            for day, included in enumerate(include_day)
-            if included
-        }
-    )
-
     feed = render_template(
         "feed.xml",
         template=template,
         days_description=days_description,
         start=start,
-        edit_link=edit_link,
         config=config,
         links=links,
         dates=dates,

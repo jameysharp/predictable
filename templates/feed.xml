@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>
 <title>{{ template }}</title>
 <description>Updating every {{ days_description }} since {{ start.strftime("%F at %T") }} in the {{ start.tzinfo.zone }} time zone</description>
-<link>{{ edit_link }}</link>
+<link>{{ url_for('edit_feed_shorturl', _external=True, tz=start.tzinfo, config=config, template=template) }}</link>
 {% for rel, page in links -%}
 {% if rel == "current" -%}
   <fh:archive xmlns:fh="http://purl.org/syndication/history/1.0"/>
