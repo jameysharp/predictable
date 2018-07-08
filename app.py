@@ -173,17 +173,14 @@ def feed(config, tz, template, page=None):
     links = []
     if page is None:
         etag = quote_etag(str(total_posts))
-        headers['ETag'] = etag
-        if not is_resource_modified(request.environ, etag):
-            return Response(status=304, headers=headers)
-
         next_date, dates = recent_dates(start, now, include_day, per_page)
         max_age = int((next_date - now).total_seconds())
         if last_page >= 0:
             links.append(('prev-archive', last_page))
     elif page <= last_page:
-        max_age = 7 * 24 * 60 * 60
+        etag = '"0"'
         dates = archived_dates(start, include_day, page * per_page, per_page)
+        max_age = 7 * 24 * 60 * 60
         links.append(('current', None))
         if page < last_page:
             links.append(('next-archive', page + 1))
@@ -194,6 +191,9 @@ def feed(config, tz, template, page=None):
 
     headers['Cache-Control'] = "public, max-age={}, immutable".format(max_age)
     headers['Expires'] = http_date(now + timedelta(seconds=max_age))
+    headers['ETag'] = etag
+    if not is_resource_modified(request.environ, etag):
+        return Response(status=304, headers=headers)
 
     day_names = [
         calendar.day_name[day]
