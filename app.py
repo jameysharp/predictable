@@ -2,8 +2,8 @@ import calendar
 from collections import namedtuple
 from datetime import datetime, timedelta
 from flask import Flask
+from flask import Response
 from flask import abort
-from flask import make_response
 from flask import redirect
 from flask import render_template
 from flask import request
@@ -11,6 +11,7 @@ from flask import url_for
 import itertools
 import os
 import pytz
+from werkzeug.http import http_date, is_resource_modified, quote_etag
 from werkzeug.routing import BaseConverter, ValidationError
 
 app = Flask(__name__)
@@ -45,7 +46,8 @@ def recent_dates(start, now, include_day, count):
     current = datetime.combine(now, start.timetz())
     if current > now:
         current -= day
-    return itertools.takewhile(
+    next_date = next(generate_dates(current + day, include_day, forward=True))
+    return next_date, itertools.takewhile(
         lambda x: x >= start,
         itertools.islice(
             generate_dates(current, include_day, forward=False),
@@ -159,15 +161,28 @@ def feed(config, tz, template, page=None):
     include_day = config.include_day
     start = datetime.fromtimestamp(config.start_timestamp, tz)
     now = datetime.now(start.tzinfo)
+
+    total_posts = count_dates(start, now, include_day)
     per_page = 50
-    last_page = count_dates(start, now, include_day) // per_page - 1
+    last_page = total_posts // per_page - 1
+
+    headers = {
+        'Date': http_date(now),
+    }
 
     links = []
     if page is None:
-        dates = recent_dates(start, now, include_day, per_page)
+        etag = quote_etag(str(total_posts))
+        headers['ETag'] = etag
+        if not is_resource_modified(request.environ, etag):
+            return Response(status=304, headers=headers)
+
+        next_date, dates = recent_dates(start, now, include_day, per_page)
+        max_age = int((next_date - now).total_seconds())
         if last_page >= 0:
             links.append(('prev-archive', last_page))
     elif page <= last_page:
+        max_age = 7 * 24 * 60 * 60
         dates = archived_dates(start, include_day, page * per_page, per_page)
         links.append(('current', None))
         if page < last_page:
@@ -176,6 +191,9 @@ def feed(config, tz, template, page=None):
             links.append(('prev-archive', page - 1))
     else:
         abort(404)
+
+    headers['Cache-Control'] = "public, max-age={}, immutable".format(max_age)
+    headers['Expires'] = http_date(now + timedelta(seconds=max_age))
 
     day_names = [
         calendar.day_name[day]
@@ -199,6 +217,4 @@ def feed(config, tz, template, page=None):
         links=links,
         dates=dates,
     )
-    response = make_response(feed)
-    response.headers['Content-Type'] = 'application/rss+xml'
-    return response
+    return Response(feed, mimetype='application/rss+xml', headers=headers)
