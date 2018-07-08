@@ -50,7 +50,7 @@ def archived_dates(start, include_day, skip, count):
 
 def recent_dates(start, now, include_day, count):
     day = timedelta(days=1)
-    current = datetime.combine(now, start.timetz())
+    current = start.tzinfo.localize(datetime.combine(now.date(), start.time()))
     if current > now:
         current -= day
     next_date = next(generate_dates(current + day, include_day, forward=True))
