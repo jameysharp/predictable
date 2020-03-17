@@ -15,13 +15,6 @@ from werkzeug.http import http_date, is_resource_modified, quote_etag
 from werkzeug.routing import BaseConverter, ValidationError
 
 app = Flask(__name__)
-if app.debug:
-    # During development, dump profiling statistics into profile/, one file per
-    # request. Open the generated files with:
-    #   python -m pstats profile/<filename>
-    from werkzeug.contrib.profiler import ProfilerMiddleware
-    os.makedirs("profile", exist_ok=True)
-    app.wsgi_app = ProfilerMiddleware(app.wsgi_app, profile_dir="profile")
 
 
 def generate_dates(start, include_day, forward):
