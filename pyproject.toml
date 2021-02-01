@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "predictable"
+version = "0.1.0"
+description = "Generate full-history RSS feeds for sites with predictable updates and URLs"
+authors = ["Jamey Sharp <jamey@minilop.net>"]
+license = "BSD-2-Clause"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+Flask = "^1.0.2"
+gunicorn = "^19.9.0"
+pytz = "*"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

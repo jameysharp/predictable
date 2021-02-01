@@ -61,10 +61,10 @@ output through that tool.
 
 ## Development
 
-Make sure you have [Python 3][] and [pipenv][] installed.
+Make sure you have [Python 3][] and [Poetry][] installed.
 
 [Python 3]: http://docs.python-guide.org/en/latest/starting/installation/
-[pipenv]: https://docs.pipenv.org/install/
+[Poetry]: https://python-poetry.org/docs/#installation
 
 Next, create a dedicated development environment with this project's
 dependencies installed in it by running:
@@ -72,13 +72,13 @@ dependencies installed in it by running:
 ```sh
 git clone https://github.com/jameysharp/predictable.git
 cd predictable
-pipenv install
+poetry install
 ```
 
 Now you can run Flask's development web server in that environment:
 
 ```sh
-FLASK_ENV=development pipenv run flask run
+FLASK_ENV=development poetry run flask run
 ```
 
 At this point you should be able to visit <http://127.0.0.1:5000/> to
