@@ -1,16 +1,17 @@
 { pkgs ? import <nixpkgs> {} }:
 
 let
-  app = (import ./poetry.nix { inherit pkgs; }).mkPoetryApplication {
+  _pkgs = import ./poetry.nix { inherit pkgs; };
+  app = _pkgs.poetry2nix.mkPoetryApplication {
     projectDir = ./.;
   };
-in pkgs.dockerTools.streamLayeredImage {
+in _pkgs.dockerTools.streamLayeredImage {
   name = "predictable";
   contents = [
     app.dependencyEnv
 
     # handy for `docker enter`:
-    pkgs.busybox
+    _pkgs.busybox
   ];
 
   # Note that gunicorn automatically listens on all addresses and to the
