@@ -10,6 +10,9 @@ in _pkgs.dockerTools.streamLayeredImage {
   contents = [
     app.dependencyEnv
 
+    # Dokku looks for its special files in the image's working directory, / by default
+    ./dokku
+
     # handy for `docker enter`:
     _pkgs.busybox
   ];
